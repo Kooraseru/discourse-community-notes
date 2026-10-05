@@ -18,7 +18,7 @@ The interface is built from native Discourse controls and theme variables so it 
 
 Requires a userscript manager such as [Tampermonkey](https://www.tampermonkey.net/).
 
-[Install Discourse Community Notes](https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js)
+[Install Discourse Community Notes](https://github.com/Kooraseru/discourse-community-notes/raw/refs/heads/main/discourse-community-notes.user.js)
 
 Updates are distributed through the same userscript URL.
 
