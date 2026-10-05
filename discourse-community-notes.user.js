@@ -1110,10 +1110,10 @@
         // divider.className =
         //     "df-community-note-divider";
 
-        // topicMapContents.append(
-        //     divider,
-        //     note
-        // );
+        topicMapContents.append(
+            // divider,
+            note
+        );
     }
 
     ensureNote();
