@@ -2,7 +2,7 @@
 // @name         Discourse Community Notes
 // @namespace    kooraseru
 // @author       kooraseru (https://github.com/Kooraseru)
-// @version      1.0.0
+// @version      1.0.1
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js
@@ -44,7 +44,7 @@
         ({
             iconHTML,
         } = window.require(
-            "discourse-common/lib/icon-library"
+            "discourse/lib/icon-library"
         ));
     } catch (error) {
         console.error(
