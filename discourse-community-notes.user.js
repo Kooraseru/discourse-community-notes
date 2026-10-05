@@ -2,7 +2,7 @@
 // @name         Discourse Community Notes
 // @namespace    kooraseru
 // @author       kooraseru (https://github.com/Kooraseru)
-// @version      1.0.1
+// @version      1.1.0
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js
@@ -13,50 +13,59 @@
 (() => {
     "use strict";
 
-    const TARGET_POST = 1;
+    const LIKE_ACTION_ID = 2;
+    const POSTS_PER_REQUEST = 20;
 
-    /*
-     * We intentionally match broadly and then verify
-     * that this is actually a Discourse topic.
-     *
-     * This also handles Discourse installations living
-     * under subdirectories instead of assuming /t/*
-     * exists directly at the domain root.
-     */
-    function isDiscourseTopic() {
-        return Boolean(
-            location.pathname.includes("/t/") &&
-            document.querySelector(".post-stream") &&
-            document.querySelector(
-                "article[id^='post_']"
-            ) &&
-            window.require
+    const generator =
+        document.querySelector(
+            'meta[name="generator"]'
         );
-    }
 
-    if (!isDiscourseTopic()) {
+    if (
+        !generator
+            ?.content
+            ?.startsWith(
+                "Discourse"
+            )
+    ) {
         return;
     }
 
-    let iconHTML;
+    let iconHTML = null;
 
-    try {
-        ({
-            iconHTML,
-        } = window.require(
-            "discourse/lib/icon-library"
-        ));
-    } catch (error) {
+    for (
+        const moduleName
+        of [
+            "discourse/lib/icon-library",
+            "discourse-common/lib/icon-library",
+        ]
+    ) {
+        try {
+            ({
+                iconHTML,
+            } = window.require(
+                moduleName
+            ));
+
+            break;
+        } catch {
+            // Same Discourse icon library,
+            // different frontend generation.
+        }
+    }
+
+    if (!iconHTML) {
         console.error(
-            "Community Notes: could not access the Discourse icon library.",
-            error
+            "Community Notes: Discourse icon library unavailable."
         );
 
         return;
     }
 
     const style =
-        document.createElement("style");
+        document.createElement(
+            "style"
+        );
 
     style.textContent = `
         .df-community-note {
@@ -107,18 +116,6 @@
             align-items: center;
         }
 
-        /*
-         * Preserve the structure that Discourse's
-         * post-control CSS expects:
-         *
-         * nav.post-controls
-         *   .actions
-         *     .double-button
-         *
-         * display: contents keeps those ancestors
-         * available to CSS selectors without making
-         * the normal post toolbar control our layout.
-         */
         .df-community-note-native-controls,
         .df-community-note-native-controls
             > .actions {
@@ -140,10 +137,6 @@
                 rotate(180deg);
         }
 
-        /*
-         * The short generated preview and the original
-         * cooked post occupy the same conceptual area.
-         */
         .df-community-note-preview,
         .df-community-note-full {
             padding:
@@ -177,10 +170,6 @@
             margin-bottom: 0;
         }
 
-        /*
-         * Attribution remains visible regardless of
-         * whether the full context is expanded.
-         */
         .df-community-note-attribution {
             padding:
                 0 14px 12px;
@@ -202,251 +191,144 @@
         style
     );
 
+    let currentTopicKey = null;
+    let currentTopic = null;
+    let currentPosts = null;
+    let topicLoadPromise = null;
+
     function normalizeText(
         text
     ) {
-        return text
+        return (
+            text || ""
+        )
             .replace(
-                /\\s+/g,
+                /\s+/g,
                 " "
             )
             .trim();
     }
 
-    function getPostNumber(
-        post
-    ) {
-        return Number(
-            post.id.replace(
-                "post_",
-                ""
-            )
-        );
-    }
-
-    function getNativeLikeButton(
-        post
-    ) {
-        return post.querySelector(
-            ".post-menu-area button.toggle-like"
-        );
-    }
-
-    function getNativeLikeCountButton(
-        post
-    ) {
-        return post.querySelector(
-            ".post-menu-area button.like-count.button-count"
-        );
-    }
-
-    function getNativeDoubleButton(
-        post
-    ) {
-        return post.querySelector(
-            ".post-menu-area .double-button"
-        );
-    }
-
-    function isLiked(
-        post
-    ) {
-        const button =
-            getNativeLikeButton(
-                post
+    function getTopicRoute() {
+        const match =
+            location.pathname.match(
+                /^(.*?\/t\/[^/]+\/(\d+))(?=\/|$)/
             );
 
-        if (!button) {
-            return false;
+        if (!match) {
+            return null;
         }
 
-        return (
-            button.classList.contains(
-                "has-like"
-            ) ||
-            button.getAttribute(
-                "title"
-            ) === "undo like" ||
-            button.getAttribute(
-                "aria-pressed"
-            ) === "true"
-        );
-    }
-
-    function getLikeCount(
-        post
-    ) {
-        const count =
-            getNativeLikeCountButton(
-                post
-            );
-
-        if (count) {
-            return (
+        return {
+            root:
+                match[1],
+            id:
                 Number(
-                    count
-                        .textContent
-                        .trim()
-                        .replace(
-                            /,/g,
-                            ""
-                        )
-                ) || 0
+                    match[2]
+                ),
+        };
+    }
+
+    function getBaseUri() {
+        return (
+            document.querySelector(
+                "#data-discourse-setup"
+            )
+                ?.dataset
+                ?.baseUri ||
+            ""
+        ).replace(
+            /\/$/,
+            ""
+        );
+    }
+
+    function absoluteUrl(
+        path
+    ) {
+        return new URL(
+            path,
+            location.origin
+        ).href;
+    }
+
+    function getPostUrl(
+        post
+    ) {
+        if (
+            post.post_url
+        ) {
+            return absoluteUrl(
+                post.post_url
             );
         }
 
-        return isLiked(post)
-            ? 1
-            : 0;
-    }
-
-    function getUsername(
-        post
-    ) {
-        return post
-            .querySelector(
-                ".topic-meta-data .names [data-user-card]"
-            )
-            ?.getAttribute(
-                "data-user-card"
-            );
+        return absoluteUrl(
+            `${getBaseUri()}/t/${post.topic_id}/${post.post_number}`
+        );
     }
 
     function getUserUrl(
         username
     ) {
-        return new URL(
-            `/u/${encodeURIComponent(
+        return absoluteUrl(
+            `${getBaseUri()}/u/${encodeURIComponent(
                 username
-            )}`,
-            location.origin
-        ).href;
+            )}`
+        );
     }
 
-    function getReplyUrl(
+    function getLikeAction(
         post
     ) {
-        return post
-            .querySelector(
-                ".post-info.post-date a.widget-link.post-date"
-            )
-            ?.href;
-    }
-
-    function getTopicAuthor() {
-        const post =
-            document.querySelector(
-                `article#post_${TARGET_POST}`
-            );
-
-        if (!post) {
-            return null;
-        }
-
-        const username =
-            getUsername(post);
-
-        if (!username) {
-            return null;
-        }
-
-        return {
-            username,
-            url:
-                getUserUrl(
-                    username
-                ),
+        return (
+            post.actions_summary ||
+            []
+        ).find(
+            action =>
+                action.id ===
+                LIKE_ACTION_ID
+        ) || {
+            id:
+                LIKE_ACTION_ID,
+            count:
+                0,
+            acted:
+                false,
+            can_act:
+                false,
+            can_undo:
+                false,
         };
     }
 
-    function getMostLikedReply() {
-        const posts = [
-            ...document.querySelectorAll(
-                "article[id^='post_']"
-            ),
-        ];
-
-        let best = null;
-
-        for (
-            const post of posts
-        ) {
-            const postNumber =
-                getPostNumber(
-                    post
-                );
-
-            if (
-                !Number.isFinite(
-                    postNumber
-                ) ||
-                postNumber ===
-                    TARGET_POST
-            ) {
-                continue;
-            }
-
-            const cooked =
-                post.querySelector(
-                    ".regular.contents > .cooked"
-                );
-
-            const doubleButton =
-                getNativeDoubleButton(
-                    post
-                );
-
-            const username =
-                getUsername(
-                    post
-                );
-
-            const url =
-                getReplyUrl(
-                    post
-                );
-
-            /*
-             * Discourse progressively mounts each post.
-             * Ignore incomplete ones for this pass.
-             */
-            if (
-                !cooked ||
-                !doubleButton ||
-                !username ||
-                !url
-            ) {
-                continue;
-            }
-
-            const likes =
-                getLikeCount(
-                    post
-                );
-
-            if (
-                !best ||
-                likes >
-                    best.likes
-            ) {
-                best = {
-                    post,
-                    postNumber,
-                    cooked,
-                    likes,
-                    username,
-                    url,
-                };
-            }
-        }
-
-        return best;
+    function getLikeCount(
+        post
+    ) {
+        return Number(
+            getLikeAction(
+                post
+            ).count || 0
+        );
     }
 
-    /*
-     * Produce text representing the reply author's own
-     * contribution rather than whatever they quoted.
-     */
+    function parseCooked(
+        cooked
+    ) {
+        const container =
+            document.createElement(
+                "div"
+            );
+
+        container.className =
+            "cooked";
+
+        container.innerHTML =
+            cooked || "";
+
+        return container;
+    }
+
     function getExcerptSourceText(
         cooked
     ) {
@@ -476,13 +358,6 @@
         );
     }
 
-    /*
-     * Text representing everything the full expanded
-     * version contains.
-     *
-     * This is used to decide whether expansion is
-     * actually necessary.
-     */
     function getFullText(
         cooked
     ) {
@@ -505,9 +380,6 @@
         );
     }
 
-    /*
-     * Build a 1-3 sentence semantic preview.
-     */
     function getExcerptText(
         cooked
     ) {
@@ -545,10 +417,7 @@
             )
             .filter(Boolean);
 
-        if (
-            sentences.length ===
-            0
-        ) {
+        if (!sentences.length) {
             return text;
         }
 
@@ -576,12 +445,6 @@
                 " "
             );
 
-            /*
-             * Never chop the first sentence.
-             *
-             * After that, avoid making the preview
-             * unnecessarily massive.
-             */
             if (
                 selected.length >
                     0 &&
@@ -610,7 +473,7 @@
         );
     }
 
-    function cloneReplyContent(
+    function cloneCookedContent(
         source,
         destination
     ) {
@@ -634,74 +497,460 @@
         }
     }
 
-    function installLikeControl(
-        note,
-        best
+    async function requestJson(
+        url,
+        options = {}
     ) {
-        const source =
-            getNativeDoubleButton(
-                best.post
+        const response =
+            await fetch(
+                url,
+                {
+                    credentials:
+                        "same-origin",
+                    ...options,
+                    headers: {
+                        Accept:
+                            "application/json",
+                        ...options.headers,
+                    },
+                }
             );
 
+        if (!response.ok) {
+            throw new Error(
+                `Community Notes: ${response.status} ${response.statusText} for ${url}`
+            );
+        }
+
+        if (
+            response.status ===
+            204
+        ) {
+            return null;
+        }
+
+        return response.json();
+    }
+
+    async function fetchAllPosts(
+        topic
+    ) {
+        const initialPosts =
+            topic
+                ?.post_stream
+                ?.posts ||
+            [];
+
+        const stream =
+            topic
+                ?.post_stream
+                ?.stream ||
+            [];
+
+        const byId =
+            new Map(
+                initialPosts.map(
+                    post => [
+                        post.id,
+                        post,
+                    ]
+                )
+            );
+
+        const missing =
+            stream.filter(
+                id =>
+                    !byId.has(
+                        id
+                    )
+            );
+
+        for (
+            let index = 0;
+            index <
+            missing.length;
+            index +=
+                POSTS_PER_REQUEST
+        ) {
+            const chunk =
+                missing.slice(
+                    index,
+                    index +
+                        POSTS_PER_REQUEST
+                );
+
+            const params =
+                new URLSearchParams();
+
+            for (
+                const id
+                of chunk
+            ) {
+                params.append(
+                    "post_ids[]",
+                    String(
+                        id
+                    )
+                );
+            }
+
+            const url =
+                `${getBaseUri()}/t/${topic.id}/posts.json?${params}`;
+
+            const result =
+                await requestJson(
+                    url
+                );
+
+            for (
+                const post
+                of result
+                    ?.post_stream
+                    ?.posts ||
+                result
+                    ?.posts ||
+                []
+            ) {
+                byId.set(
+                    post.id,
+                    post
+                );
+            }
+        }
+
+        return stream
+            .map(
+                id =>
+                    byId.get(
+                        id
+                    )
+            )
+            .filter(Boolean);
+    }
+
+    async function loadTopic() {
+        const route =
+            getTopicRoute();
+
+        if (!route) {
+            return null;
+        }
+
+        const key =
+            `${location.origin}${route.root}`;
+
+        if (
+            key ===
+                currentTopicKey &&
+            currentTopic &&
+            currentPosts
+        ) {
+            return {
+                topic:
+                    currentTopic,
+                posts:
+                    currentPosts,
+            };
+        }
+
+        if (
+            key ===
+                currentTopicKey &&
+            topicLoadPromise
+        ) {
+            return topicLoadPromise;
+        }
+
+        currentTopicKey =
+            key;
+
+        topicLoadPromise =
+            (async () => {
+                const topic =
+                    await requestJson(
+                        `${route.root}.json`
+                    );
+
+                const posts =
+                    await fetchAllPosts(
+                        topic
+                    );
+
+                if (
+                    currentTopicKey !==
+                    key
+                ) {
+                    return null;
+                }
+
+                currentTopic =
+                    topic;
+
+                currentPosts =
+                    posts;
+
+                return {
+                    topic,
+                    posts,
+                };
+            })();
+
+        try {
+            return await topicLoadPromise;
+        } finally {
+            if (
+                currentTopicKey ===
+                key
+            ) {
+                topicLoadPromise =
+                    null;
+            }
+        }
+    }
+
+    function getMostLikedReply(
+        posts
+    ) {
+        let best = null;
+
+        for (
+            const post
+            of posts
+        ) {
+            if (
+                post.post_number ===
+                    1 ||
+                post.post_type !==
+                    1 ||
+                post.hidden ||
+                post.deleted_at ||
+                !normalizeText(
+                    parseCooked(
+                        post.cooked
+                    ).innerText
+                )
+            ) {
+                continue;
+            }
+
+            const likes =
+                getLikeCount(
+                    post
+                );
+
+            if (
+                !best ||
+                likes >
+                    best.likes ||
+                (
+                    likes ===
+                        best.likes &&
+                    post.post_number <
+                        best.post_number
+                )
+            ) {
+                best = {
+                    ...post,
+                    likes,
+                    url:
+                        getPostUrl(
+                            post
+                        ),
+                };
+            }
+        }
+
+        return best;
+    }
+
+    function getTopicAuthor(
+        topic,
+        posts
+    ) {
+        const username =
+            topic
+                ?.details
+                ?.created_by
+                ?.username ||
+            posts.find(
+                post =>
+                    post.post_number ===
+                    1
+            )
+                ?.username;
+
+        if (!username) {
+            return null;
+        }
+
+        return {
+            username,
+            url:
+                getUserUrl(
+                    username
+                ),
+        };
+    }
+
+    function updatePostFromApi(
+        source,
+        updated
+    ) {
+        if (!updated) {
+            return;
+        }
+
+        Object.assign(
+            source,
+            updated.result ||
+                updated
+        );
+    }
+
+    function getCsrfToken() {
+        return document.querySelector(
+            'meta[name="csrf-token"]'
+        )?.content;
+    }
+
+    async function toggleLike(
+        source
+    ) {
+        const action =
+            getLikeAction(
+                source
+            );
+
+        const csrf =
+            getCsrfToken();
+
+        if (!csrf) {
+            console.error(
+                "Community Notes: CSRF token unavailable."
+            );
+
+            return false;
+        }
+
+        const headers = {
+            "Content-Type":
+                "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-CSRF-Token":
+                csrf,
+            "X-Requested-With":
+                "XMLHttpRequest",
+        };
+
+        let updated;
+
+        if (action.acted) {
+            updated =
+                await requestJson(
+                    `${getBaseUri()}/post_actions/${source.id}.json`,
+                    {
+                        method:
+                            "DELETE",
+                        headers,
+                        body:
+                            new URLSearchParams({
+                                post_action_type_id:
+                                    String(
+                                        LIKE_ACTION_ID
+                                    ),
+                            }),
+                    }
+                );
+        } else {
+            updated =
+                await requestJson(
+                    `${getBaseUri()}/post_actions.json`,
+                    {
+                        method:
+                            "POST",
+                        headers,
+                        body:
+                            new URLSearchParams({
+                                id:
+                                    String(
+                                        source.id
+                                    ),
+                                post_action_type_id:
+                                    String(
+                                        LIKE_ACTION_ID
+                                    ),
+                            }),
+                    }
+                );
+        }
+
+        updatePostFromApi(
+            source,
+            updated
+        );
+
+        return true;
+    }
+
+    function installLikeControl(
+        note,
+        source
+    ) {
         const slot =
             note.querySelector(
                 ".df-community-note-like-slot"
             );
 
-        if (
-            !source ||
-            !slot
-        ) {
+        if (!slot) {
             return;
         }
 
         slot.replaceChildren();
 
-        /*
-         * Clone Discourse's actual:
-         *
-         * [ count ] [ heart ]
-         */
-        const clone =
-            source.cloneNode(
-                true
+        const action =
+            getLikeAction(
+                source
             );
 
-        clone.classList.add(
-            "df-community-note-like-control"
-        );
-
-        const countButton =
-            clone.querySelector(
-                "button.like-count.button-count"
+        const wrapper =
+            document.createElement(
+                "div"
             );
 
-        const heartButton =
-            clone.querySelector(
-                "button.toggle-like"
+        wrapper.className =
+            "double-button post-action-menu__double-button df-community-note-like-control";
+
+        const count =
+            Number(
+                action.count || 0
             );
 
-        if (!heartButton) {
-            console.error(
-                "Community Notes: cloned native heart missing."
+        if (
+            count > 0
+        ) {
+            const countButton =
+                document.createElement(
+                    "button"
+                );
+
+            countButton.type =
+                "button";
+
+            countButton.className =
+                "btn btn-flat no-text post-action-menu__like-count like-count button-count highlight-action regular-likes btn-flat";
+
+            countButton.textContent =
+                String(
+                    count
+                );
+
+            countButton.title =
+                `${count} ${count === 1 ? "person" : "people"} liked this post`;
+
+            countButton.setAttribute(
+                "aria-label",
+                `${countButton.title}.`
             );
 
-            return;
-        }
-
-        /*
-         * This copy is only presentation.
-         * The real source reply remains authoritative.
-         */
-        heartButton.removeAttribute(
-            "data-post-id"
-        );
-
-        /*
-         * Clicking the count opens the actual
-         * source reply.
-         */
-        if (countButton) {
             countButton.addEventListener(
                 "click",
                 event => {
@@ -709,136 +958,153 @@
                     event.stopPropagation();
 
                     location.href =
-                        best.url;
+                        source.url;
                 }
+            );
+
+            wrapper.appendChild(
+                countButton
             );
         }
 
-        /*
-         * Clicking the Community Note heart delegates
-         * to the real source reply's Like button.
-         */
+        const heartButton =
+            document.createElement(
+                "button"
+            );
+
+        heartButton.type =
+            "button";
+
+        heartButton.className =
+            [
+                "btn",
+                "no-text",
+                "btn-icon",
+                "post-action-menu__like",
+                "toggle-like",
+                "btn-icon",
+                "like",
+                "btn-flat",
+                action.acted
+                    ? "has-like"
+                    : "",
+            ]
+                .filter(Boolean)
+                .join(" ");
+
+        heartButton.innerHTML =
+            iconHTML(
+                action.acted
+                    ? "heart"
+                    : "far-heart"
+            );
+
+        const canToggle =
+            Boolean(
+                action.can_act ||
+                action.can_undo ||
+                action.acted
+            );
+
+        heartButton.disabled =
+            !canToggle;
+
+        heartButton.title =
+            action.acted
+                ? "undo like"
+                : "like this post";
+
+        heartButton.setAttribute(
+            "aria-label",
+            heartButton.title
+        );
+
+        heartButton.setAttribute(
+            "aria-pressed",
+            String(
+                Boolean(
+                    action.acted
+                )
+            )
+        );
+
         heartButton.addEventListener(
             "click",
-            event => {
+            async event => {
                 event.preventDefault();
                 event.stopPropagation();
 
-                toggleSourceLike(
-                    note,
-                    best
-                );
+                if (
+                    heartButton.disabled
+                ) {
+                    return;
+                }
+
+                heartButton.disabled =
+                    true;
+
+                try {
+                    await toggleLike(
+                        source
+                    );
+
+                    installLikeControl(
+                        note,
+                        source
+                    );
+                } catch (error) {
+                    console.error(
+                        "Community Notes: failed to toggle like.",
+                        error
+                    );
+
+                    installLikeControl(
+                        note,
+                        source
+                    );
+                }
             }
+        );
+
+        wrapper.appendChild(
+            heartButton
         );
 
         slot.appendChild(
-            clone
-        );
-    }
-
-    async function toggleSourceLike(
-        note,
-        best
-    ) {
-        const sourceButton =
-            getNativeLikeButton(
-                best.post
-            );
-
-        if (!sourceButton) {
-            console.error(
-                "Community Notes: source reply heart disappeared."
-            );
-
-            return;
-        }
-
-        const previousLiked =
-            isLiked(
-                best.post
-            );
-
-        const previousCount =
-            getLikeCount(
-                best.post
-            );
-
-        /*
-         * Actual server-backed Discourse action.
-         */
-        sourceButton.click();
-
-        /*
-         * Wait for the actual source reply's state
-         * to update.
-         */
-        for (
-            let attempt = 0;
-            attempt < 30;
-            attempt++
-        ) {
-            await new Promise(
-                resolve =>
-                    setTimeout(
-                        resolve,
-                        100
-                    )
-            );
-
-            if (
-                isLiked(
-                    best.post
-                ) !==
-                    previousLiked ||
-                getLikeCount(
-                    best.post
-                ) !==
-                    previousCount
-            ) {
-                break;
-            }
-        }
-
-        /*
-         * Reclone whatever Discourse now renders.
-         */
-        installLikeControl(
-            note,
-            best
+            wrapper
         );
     }
 
     function createNote(
+        topic,
+        posts,
         best
     ) {
         const topicAuthor =
-            getTopicAuthor();
-
-        if (!topicAuthor) {
-            console.error(
-                "Community Notes: topic author could not be determined."
+            getTopicAuthor(
+                topic,
+                posts
             );
 
+        if (!topicAuthor) {
             return null;
         }
 
+        const cooked =
+            parseCooked(
+                best.cooked
+            );
+
         const excerpt =
             getExcerptText(
-                best.cooked
+                cooked
             );
 
         const fullText =
             getFullText(
-                best.cooked
+                cooked
             );
 
-        /*
-         * Expansion only exists if the preview does not
-         * already represent the complete reply.
-         *
-         * A quoted section, code block, omitted media,
-         * additional sentence, etc. all count as more.
-         */
         const hasMore =
             normalizeText(
                 excerpt
@@ -866,17 +1132,16 @@
 
         note.dataset.sourcePost =
             String(
-                best.postNumber
+                best.id
             );
 
         note.innerHTML = `
             <div class="df-community-note-head">
-
                 <div class="df-community-note-title">
                     ${iconHTML("circle-info")}
 
                     <a
-                        href="${best.url}"
+                        href="${topicAuthor.url}"
                         class="df-community-note-owner"
                     >Community Note</a>
                 </div>
@@ -884,7 +1149,6 @@
                 <div class="df-community-note-spacer"></div>
 
                 <div class="df-community-note-actions">
-
                     <nav
                         class="
                             post-controls
@@ -892,6 +1156,7 @@
                             collapsed
                             df-community-note-native-controls
                         "
+                        role="none"
                     >
                         <div class="actions">
                             <div
@@ -923,7 +1188,6 @@
                             `
                             : ""
                     }
-
                 </div>
             </div>
 
@@ -935,7 +1199,7 @@
                 hasMore
                     ? `
                         <div
-                            class="df-community-note-full"
+                            class="df-community-note-full cooked"
                         ></div>
                     `
                     : ""
@@ -958,10 +1222,6 @@
             );
 
         if (!preview) {
-            console.error(
-                "Community Notes: preview container missing."
-            );
-
             return null;
         }
 
@@ -984,15 +1244,11 @@
                 !full ||
                 !toggle
             ) {
-                console.error(
-                    "Community Notes: expandable UI incomplete."
-                );
-
                 return null;
             }
 
-            cloneReplyContent(
-                best.cooked,
+            cloneCookedContent(
+                cooked,
                 full
             );
 
@@ -1035,63 +1291,79 @@
         return note;
     }
 
-    function ensureNote() {
-        const targetPost =
-            document.querySelector(
-                `article#post_${TARGET_POST}`
-            );
+    async function ensureNote() {
+        const route =
+            getTopicRoute();
 
-        const topicMap =
-            targetPost?.querySelector(
-                ".topic-map.--op"
-            );
+        if (!route) {
+            return;
+        }
 
         const topicMapContents =
-            topicMap?.querySelector(
-                ":scope > .topic-map__contents"
+            document.querySelector(
+                ".topic-map.--op > .topic-map__contents"
             );
 
-        if (
-            !targetPost ||
-            !topicMap ||
-            !topicMapContents
-        ) {
+        if (!topicMapContents) {
             return;
         }
+
+        let loaded;
+
+        try {
+            loaded =
+                await loadTopic();
+        } catch (error) {
+            console.error(
+                "Community Notes: failed to load topic data.",
+                error
+            );
+
+            return;
+        }
+
+        if (!loaded) {
+            return;
+        }
+
+        const {
+            topic,
+            posts,
+        } = loaded;
 
         const best =
-            getMostLikedReply();
-
-        if (!best) {
-            return;
-        }
+            getMostLikedReply(
+                posts
+            );
 
         const existing =
             topicMapContents.querySelector(
                 ".df-community-note"
             );
 
+        if (!best) {
+            existing?.remove();
+
+            return;
+        }
+
         if (
             existing
                 ?.dataset
                 .sourcePost ===
             String(
-                best.postNumber
+                best.id
             )
         ) {
             return;
         }
 
-        topicMapContents
-            .querySelector(
-                "hr.df-community-note-divider"
-            )
-            ?.remove();
-
         existing?.remove();
 
         const note =
             createNote(
+                topic,
+                posts,
                 best
             );
 
@@ -1099,49 +1371,35 @@
             return;
         }
 
-        /*
-         * Divider I was considering, decided to drop it.
-         */
-
-        // const divider =
-        //     document.createElement(
-        //         "hr"
-        //     );
-
-        // divider.className =
-        //     "df-community-note-divider";
-
         topicMapContents.append(
-            // divider,
             note
         );
     }
 
-    ensureNote();
-
-    /*
-     * Discourse virtualizes / progressively mounts posts.
-     */
     let scheduled = false;
+
+    function scheduleEnsureNote() {
+        if (scheduled) {
+            return;
+        }
+
+        scheduled = true;
+
+        requestAnimationFrame(
+            () => {
+                scheduled =
+                    false;
+
+                ensureNote();
+            }
+        );
+    }
+
+    scheduleEnsureNote();
 
     const observer =
         new MutationObserver(
-            () => {
-                if (scheduled) {
-                    return;
-                }
-
-                scheduled = true;
-
-                requestAnimationFrame(
-                    () => {
-                        scheduled =
-                            false;
-
-                        ensureNote();
-                    }
-                );
-            }
+            scheduleEnsureNote
         );
 
     observer.observe(
@@ -1149,6 +1407,25 @@
         {
             childList: true,
             subtree: true,
+        }
+    );
+
+    window.addEventListener(
+        "popstate",
+        () => {
+            currentTopicKey =
+                null;
+
+            currentTopic =
+                null;
+
+            currentPosts =
+                null;
+
+            topicLoadPromise =
+                null;
+
+            scheduleEnsureNote();
         }
     );
 })();
