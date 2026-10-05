@@ -168,7 +168,7 @@
             display: none;
         }
 
-        .df-community-note:not(.collapsed)
+        .df-community-note.expandable:not(.collapsed)
             .df-community-note-preview {
             display: none;
         }
@@ -864,7 +864,7 @@
                 "no-group",
                 "df-community-note",
                 hasMore
-                    ? "collapsed"
+                    ? "expandable collapsed"
                     : "",
             ]
                 .filter(Boolean)
