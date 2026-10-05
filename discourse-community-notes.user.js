@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discourse Community Notes
 // @namespace    kooraseru
-// @version      0.14.4
+// @version      1.0.0
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js
