@@ -875,7 +875,7 @@
                     ${iconHTML("circle-info")}
 
                     <a
-                        href="${topicAuthor.url}"
+                        href="${best.url}"
                         class="df-community-note-owner"
                     >Community Note</a>
                 </div>
