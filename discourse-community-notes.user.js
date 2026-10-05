@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discourse Community Notes
 // @namespace    kooraseru
-// @version      0.14.1
+// @version      0.14.2
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js
@@ -60,7 +60,15 @@
     style.textContent = `
         .df-community-note {
             margin: 14px 0 10px;
+            padding-top: 15px;
             overflow: hidden;
+
+            /*
+             * Match Discourse's native topic-post divider.
+             * app/assets/stylesheets/common/base/topic-post.scss
+             */
+            border-top:
+                1px solid var(--content-border-color);
 
             border-left-color:
                 var(--tertiary) !important;
