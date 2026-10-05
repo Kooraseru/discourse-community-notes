@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discourse Community Notes
 // @namespace    kooraseru
-// @version      0.14.2
+// @version      0.14.3
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js
@@ -59,22 +59,7 @@
 
     style.textContent = `
         .df-community-note {
-            margin: 14px 0 10px;
-            padding-top: 15px;
             overflow: hidden;
-
-            /*
-             * Match Discourse's native topic-post divider.
-             * app/assets/stylesheets/common/base/topic-post.scss
-             */
-            border-top:
-                1px solid var(--content-border-color);
-
-            border-left-color:
-                var(--tertiary) !important;
-
-            border-left-width:
-                6px !important;
         }
 
         .df-community-note-head {
@@ -1055,23 +1040,20 @@
                 `article#post_${TARGET_POST}`
             );
 
-        if (!targetPost) {
-            return;
-        }
-
-        const contents =
-            targetPost.querySelector(
-                ".regular.contents"
+        const topicMap =
+            targetPost?.querySelector(
+                ".topic-map.--op"
             );
 
-        const menu =
-            contents?.querySelector(
-                ".post-menu-area"
+        const topicMapContents =
+            topicMap?.querySelector(
+                ":scope > .topic-map__contents"
             );
 
         if (
-            !contents ||
-            !menu
+            !targetPost ||
+            !topicMap ||
+            !topicMapContents
         ) {
             return;
         }
@@ -1084,7 +1066,7 @@
         }
 
         const existing =
-            contents.querySelector(
+            topicMapContents.querySelector(
                 ".df-community-note"
             );
 
@@ -1099,6 +1081,12 @@
             return;
         }
 
+        topicMapContents
+            .querySelector(
+                "hr.df-community-note-divider"
+            )
+            ?.remove();
+
         existing?.remove();
 
         const note =
@@ -1110,8 +1098,16 @@
             return;
         }
 
-        menu.insertAdjacentElement(
-            "afterend",
+        const divider =
+            document.createElement(
+                "hr"
+            );
+
+        divider.className =
+            "df-community-note-divider";
+
+        topicMapContents.append(
+            divider,
             note
         );
     }
