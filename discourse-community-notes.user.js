@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name         Discourse Community Notes
 // @namespace    kooraseru
+// @author       kooraseru (https://github.com/Kooraseru)
 // @version      1.0.0
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
