@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discourse Community Notes
 // @namespace    kooraseru
-// @version      0.14.3
+// @version      0.14.4
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js
@@ -1098,18 +1098,22 @@
             return;
         }
 
-        const divider =
-            document.createElement(
-                "hr"
-            );
+        /*
+         * Divider I was considering, decided to drop it.
+         */
 
-        divider.className =
-            "df-community-note-divider";
+        // const divider =
+        //     document.createElement(
+        //         "hr"
+        //     );
 
-        topicMapContents.append(
-            divider,
-            note
-        );
+        // divider.className =
+        //     "df-community-note-divider";
+
+        // topicMapContents.append(
+        //     divider,
+        //     note
+        // );
     }
 
     ensureNote();
