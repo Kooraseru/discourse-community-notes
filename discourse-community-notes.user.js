@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Discourse Community Notes
 // @namespace    kooraseru
-// @version      0.14.0
+// @version      0.14.1
 // @description  Community Notes for Discourse-based forums
 // @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/main/discourse-community-notes.user.js
@@ -879,7 +879,7 @@
             <div class="df-community-note-head">
 
                 <div class="df-community-note-title">
-                    ${iconHTML("info")}
+                    ${iconHTML("circle-info")}
 
                     <a
                         href="${topicAuthor.url}"
