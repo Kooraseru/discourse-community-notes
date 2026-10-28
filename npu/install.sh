@@ -3,9 +3,9 @@ set -euo pipefail
 
 # winGet local manifests require an elevated, one-time Windows setting.
 # use the same GitHub release installer directly instead.
-version='0.1.1'
+version='0.1.2'
 name="CommunityNotesNPU-Setup-${version}-arm64.exe"
-sha256='50b208e2a965be791975d6020123373629c49bf68c525664d465d6805afd9d55'
+sha256='1f97a18c0c8c52a969219f501ae3997076e9ff7e03ba3e0a42c8f671469f4ce3'
 url="https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v${version}/${name}"
 
 tmpdir="$(mktemp -d)"
