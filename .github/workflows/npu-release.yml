@@ -1,0 +1,118 @@
+name: NPU launcher release
+
+on:
+  push:
+    branches: [gemini-nano]
+    paths:
+      - .github/workflows/npu-release.yml
+  workflow_dispatch:
+    inputs:
+      version:
+        description: NPU launcher version (without the v prefix)
+        required: true
+        default: '0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      NPU_VERSION: ${{ github.event.inputs.version || '0.1.0' }}
+
+    steps:
+      - name: Check out the test branch
+        uses: actions/checkout@v4
+        with:
+          ref: gemini-nano
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build Windows ARM64 launcher
+        shell: pwsh
+        run: |
+          $programFilesX86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+          $compiler = Join-Path $programFilesX86 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path -LiteralPath $compiler)) {
+            throw "Inno Setup compiler missing at $compiler"
+          }
+          & $compiler "/DMyAppVersion=$env:NPU_VERSION" 'npu\installer.iss'
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Generate local WinGet manifest with the built installer hash
+        shell: pwsh
+        run: |
+          $name = "CommunityNotesNPU-Setup-$env:NPU_VERSION-arm64.exe"
+          $installer = Join-Path 'dist' $name
+          if (-not (Test-Path -LiteralPath $installer)) {
+            throw "Expected installer missing: $installer"
+          }
+          $sha256 = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash
+          $downloadUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/npu-v$env:NPU_VERSION/$name"
+          $manifest = @(
+            'PackageIdentifier: Kooraseru.DiscourseCommunityNotesNPU'
+            "PackageVersion: $env:NPU_VERSION"
+            'PackageLocale: en-US'
+            'Publisher: Kooraseru'
+            'PackageName: Community Notes NPU Launcher'
+            'License: ISC'
+            'ShortDescription: Local Snapdragon NPU inference launcher for Discourse Community Notes'
+            'PackageUrl: https://github.com/Kooraseru/discourse-community-notes'
+            'InstallerType: inno'
+            'Installers:'
+            '  - Architecture: arm64'
+            "    InstallerUrl: $downloadUrl"
+            "    InstallerSha256: $sha256"
+            'ManifestType: singleton'
+            'ManifestVersion: 1.10.0'
+          ) -join [Environment]::NewLine
+          New-Item -ItemType Directory -Path winget -Force | Out-Null
+          [System.IO.File]::WriteAllText(
+            'winget/Kooraseru.DiscourseCommunityNotesNPU.yaml',
+            $manifest + [Environment]::NewLine,
+            (New-Object System.Text.UTF8Encoding($false))
+          )
+
+      - name: Commit the generated WinGet manifest to gemini-nano
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add winget/Kooraseru.DiscourseCommunityNotesNPU.yaml
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "Package NPU launcher $env:NPU_VERSION for WinGet"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not commit WinGet manifest' }
+            git push origin HEAD:gemini-nano
+            if ($LASTEXITCODE -ne 0) { throw 'Could not push WinGet manifest' }
+          }
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "npu-v$env:NPU_VERSION"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Release $tag already exists. Bump the version to publish another installer."
+          }
+          $installer = "dist/CommunityNotesNPU-Setup-$env:NPU_VERSION-arm64.exe"
+          $arguments = @(
+            'release', 'create', $tag, $installer,
+            'winget/Kooraseru.DiscourseCommunityNotesNPU.yaml',
+            '--repo', $env:GITHUB_REPOSITORY,
+            '--target', 'gemini-nano',
+            '--title', "Community Notes NPU launcher v$env:NPU_VERSION",
+            '--notes-file', 'npu/release-notes.md',
+            '--prerelease'
+          )
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub release creation failed with exit code $LASTEXITCODE"
+          }
