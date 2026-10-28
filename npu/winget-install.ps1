@@ -49,8 +49,13 @@ $verb = if ($installed) { 'upgrade' } else { 'install' }
 
 # Prefer the real winget catalog once Microsoft accepts the upstream package.
 # Until then, the same winget executable installs from our release manifest.
-$catalogOutput = & $winget show --id $packageId --exact --source winget --accept-source-agreements 2>&1 | Out-String
-$inCatalog = $LASTEXITCODE -eq 0
+$inCatalog = $false
+try {
+    $catalogOutput = & $winget show --id $packageId --exact --source winget --accept-source-agreements 2>&1 | Out-String
+    $inCatalog = $LASTEXITCODE -eq 0
+} catch {
+    $inCatalog = $false
+}
 if ($inCatalog) {
     Write-Host 'found our app in the public winget catalog.'
     $output = & $winget $verb --id $packageId --exact --source winget --interactive --accept-package-agreements --accept-source-agreements 2>&1 | Out-String
@@ -65,8 +70,13 @@ if ($inCatalog) {
 
 Write-Host 'using the release manifest with winget (not a manual exe download).'
 function Invoke-LocalInstall {
-    $output = & $winget $verb --manifest $ManifestPath --interactive --accept-package-agreements --accept-source-agreements 2>&1 | Out-String
-    $exitCode = $LASTEXITCODE
+    try {
+        $output = & $winget $verb --manifest $ManifestPath --interactive --accept-package-agreements --accept-source-agreements 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
+    } catch {
+        $output = [string]$_
+        $exitCode = if ($LASTEXITCODE) { $LASTEXITCODE } else { 1 }
+    }
     Write-Host $output
     return @{ Code = $exitCode; Text = $output }
 }
@@ -81,7 +91,7 @@ if ($result.Code -ne 0 -and $verb -eq 'upgrade' -and
     $result = Invoke-LocalInstall
 }
 if ($result.Code -ne 0 -and
-    $result.Text -match '(?i)localmanifestfiles|administrator setting|requires.*admin|local manifest.*disabled|experimental feature.*disabled|0x8a15001d') {
+    ($result.Code -eq -1978335203 -or $result.Text -match '(?i)localmanifestfiles|administrator setting|requires.*admin|local manifest.*disabled|experimental feature.*disabled|0x8a15001d')) {
     Write-Host 'winget needs permission to use release manifests. approve the windows popup once.'
     $powershell = Join-Path $PSHOME 'powershell.exe'
     $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -EnableLocalManifests'
