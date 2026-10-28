@@ -2345,19 +2345,18 @@ ${JSON.stringify(payload, null, 2)}`;
                     "Evaluating findings 0/2",
                     `${imageData.images.length}/${imageData.requestedCount} images loaded`
                 );
-                const findings = (await Promise.all(
-                    LOCAL_AI_EVALUATORS.map(async evaluator => {
-                        const finding = await evaluateLocalAIFinding(
-                            evaluator, topic, posts, replies, imageData
-                        );
-                        evaluatorsFinished += 1;
-                        setLocalAIProgress(
-                            `Evaluating findings ${evaluatorsFinished}/${LOCAL_AI_EVALUATORS.length}`,
-                            `${imageData.images.length}/${imageData.requestedCount} images loaded`
-                        );
-                        return finding;
-                    })
-                )).filter(Boolean);
+                const findings = [];
+                for (const evaluator of LOCAL_AI_EVALUATORS) {
+                    const finding = await evaluateLocalAIFinding(
+                        evaluator, topic, posts, replies, imageData
+                    );
+                    if (finding) findings.push(finding);
+                    evaluatorsFinished += 1;
+                    setLocalAIProgress(
+                        `Evaluating findings ${evaluatorsFinished}/${LOCAL_AI_EVALUATORS.length}`,
+                        `${imageData.images.length}/${imageData.requestedCount} images loaded`
+                    );
+                }
 
                 if (!findings.length) {
                     localAILog("note: no supported finding");
