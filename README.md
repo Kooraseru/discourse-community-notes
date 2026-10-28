@@ -28,7 +28,7 @@ Updates are distributed through the same userscript URL.
 windows 11 arm64 + snapdragon x elite. the npu backend runs locally and the windows tray app controls it — no terminal required for regular use.
 
 1. install [tampermonkey](https://www.tampermonkey.net/) and the [`gemini-nano` userscript](https://github.com/Kooraseru/discourse-community-notes/raw/refs/heads/gemini-nano/discourse-community-notes.user.js).
-2. download and run [Community Notes NPU Launcher v0.1.2 for Windows ARM64](https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v0.1.2/CommunityNotesNPU-Setup-0.1.2-arm64.exe). it upgrades the old launcher in place.
+2. download and run [Community Notes NPU Launcher v0.1.3 for Windows ARM64](https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v0.1.3/CommunityNotesNPU-Setup-0.1.3-arm64.exe). it upgrades the old launcher in place.
 3. the installer opens a real windows control window. you'll also find **Community Notes NPU** in the start menu and notification area (click the **^** near the clock if the tray icon is hidden).
 4. click **start**, **stop**, or **restart** there. turn **start with windows** on or off. closing the control window leaves the tray app running; use **quit tray and stop server** to exit completely.
 5. if the model isn't installed, right-click the tray icon and choose **prepare vision model**. if genieX itself isn't installed, use the included **Community Notes NPU Setup and Repair** shortcut once to install it.
