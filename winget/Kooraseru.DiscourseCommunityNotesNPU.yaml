@@ -1,0 +1,15 @@
+PackageIdentifier: Kooraseru.DiscourseCommunityNotesNPU
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: Kooraseru
+PackageName: Community Notes NPU Launcher
+License: ISC
+ShortDescription: Local Snapdragon NPU inference launcher for Discourse Community Notes
+PackageUrl: https://github.com/Kooraseru/discourse-community-notes
+InstallerType: inno
+Installers:
+  - Architecture: arm64
+    InstallerUrl: https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v0.1.0/CommunityNotesNPU-Setup-0.1.0-arm64.exe
+    InstallerSha256: 5BBD9058371E0E02FB28B7FC0BF807E6348A7435C09C6C824660506785AC1A5E
+ManifestType: singleton
+ManifestVersion: 1.10.0
