@@ -1,6 +1,8 @@
 #requires -Version 5.1
 
 $ErrorActionPreference = 'Stop'
+$background = $args -contains '-Background'
+if ($background -and -not (Get-Command geniex.exe -ErrorAction SilentlyContinue)) { exit 0 }
 
 # Keep this in sync with GENIEX_MODEL in discourse-community-notes.user.js.
 $model = 'ai-hub-models/Qwen2.5-VL-7B-Instruct'
