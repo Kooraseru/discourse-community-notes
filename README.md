@@ -56,7 +56,15 @@ the model can still get facts wrong. don't take an ai-generated note as proof of
 
 if the tray won't start, open it from the start menu and check **view log**. if the model isn't there, hit **prepare vision model**. if geniex is missing, hit **install geniex**. no terminal needed.
 
-to remove the launcher, go to **windows settings → apps → installed apps** and uninstall **community notes npu launcher**. the userscript is separate; remove that in tampermonkey if you want.
+want to get rid of the launcher? winget can handle that too:
+
+```bash
+winget.exe uninstall \
+  --name "Community Notes NPU Launcher" \
+  --exact
+```
+
+or just use **windows settings → apps → installed apps** like a normal person. the userscript is separate; remove that in tampermonkey if you want.
 
 ## other stuff
 
