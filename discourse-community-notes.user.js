@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Discourse Community Notes [Local AI Test]
+// @name         Discourse Community Notes
 // @namespace    kooraseru
 // @author       kooraseru (https://github.com/Kooraseru)
 // @version      1.2.0-local-ai.16
