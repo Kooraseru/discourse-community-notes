@@ -52,7 +52,7 @@ $verb = if ($installed) { 'upgrade' } else { 'install' }
 $catalogOutput = & $winget show --id $packageId --exact --source winget --accept-source-agreements 2>&1 | Out-String
 $inCatalog = $LASTEXITCODE -eq 0
 if ($inCatalog) {
-    Write-Host 'found it in the public winget catalog.'
+    Write-Host 'found our app in the public winget catalog.'
     $output = & $winget $verb --id $packageId --exact --source winget --interactive --accept-package-agreements --accept-source-agreements 2>&1 | Out-String
     Write-Host $output
     if ($LASTEXITCODE -ne 0) {
@@ -73,7 +73,7 @@ function Invoke-LocalInstall {
 
 $result = Invoke-LocalInstall
 if ($result.Code -ne 0 -and
-    $result.Text -match '(?i)localmanifestfiles|administrator setting|local manifest.*disabled|experimental feature.*disabled|0x8a15001d') {
+    $result.Text -match '(?i)localmanifestfiles|administrator setting|requires.*admin|local manifest.*disabled|experimental feature.*disabled|0x8a15001d') {
     Write-Host 'winget needs permission to use release manifests. approve the windows popup once.'
     $powershell = Join-Path $PSHOME 'powershell.exe'
     $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -EnableLocalManifests'
