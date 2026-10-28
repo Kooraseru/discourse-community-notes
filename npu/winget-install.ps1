@@ -72,6 +72,14 @@ function Invoke-LocalInstall {
 }
 
 $result = Invoke-LocalInstall
+# Some older hand-installed Inno versions aren't linked to a WinGet
+# package yet. In that case, install with the same AppId upgrades in place.
+if ($result.Code -ne 0 -and $verb -eq 'upgrade' -and
+    $result.Text -match '(?i)no installed package|no applicable update|no package found matching|not found in installed') {
+    Write-Host 'winget did not recognize the older install. trying an in-place install.'
+    $verb = 'install'
+    $result = Invoke-LocalInstall
+}
 if ($result.Code -ne 0 -and
     $result.Text -match '(?i)localmanifestfiles|administrator setting|requires.*admin|local manifest.*disabled|experimental feature.*disabled|0x8a15001d') {
     Write-Host 'winget needs permission to use release manifests. approve the windows popup once.'
