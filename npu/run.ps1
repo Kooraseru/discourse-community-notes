@@ -1,8 +1,7 @@
 #requires -Version 5.1
+param([switch]$InstallOnly)
 
 $ErrorActionPreference = 'Stop'
-$background = $args -contains '-Background'
-if ($background -and -not (Get-Command geniex.exe -ErrorAction SilentlyContinue)) { exit 0 }
 
 # Keep this in sync with GENIEX_MODEL in discourse-community-notes.user.js.
 $model = 'ai-hub-models/Qwen2.5-VL-7B-Instruct:W4A16'
@@ -28,6 +27,7 @@ function Refresh-Path {
 }
 
 try {
+    Refresh-Path
     $geniex = Find-GenieX
     if (-not $geniex) {
         Write-Host 'GenieX is missing. Downloading the official Qualcomm Windows ARM64 installer...'
@@ -53,6 +53,11 @@ try {
         if (-not $geniex) {
             throw 'GenieX finished installing, but geniex.exe is not on PATH. Open a new terminal, verify geniex --help works, then launch this shortcut again.'
         }
+    }
+
+    if ($InstallOnly) {
+        Write-Host 'GenieX is ready. Open Community Notes NPU from the start menu.'
+        exit 0
     }
 
     Write-Host "Preparing the local vision model: $model"
