@@ -22,6 +22,36 @@ Requires a userscript manager such as [Tampermonkey](https://www.tampermonkey.ne
 
 Updates are distributed through the same userscript URL.
 
+
+## windows on arm / snapdragon npu setup
+
+if you're on windows 11 arm64 with a snapdragon x elite, here's how to get the local npu stuff running. no cloning the repo, no fucking around with winget manifests.
+
+1. install [tampermonkey](https://www.tampermonkey.net/) and [the gemini-nano userscript](https://github.com/Kooraseru/discourse-community-notes/raw/refs/heads/gemini-nano/discourse-community-notes.user.js). use this branch's script, not the `main` one.
+2. open **msys2 clangarm64** and paste this entire command:
+
+   ```bash
+   curl -fsSL \
+     https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/gemini-nano/npu/install.sh \
+     | bash
+   ```
+
+3. the script downloads the **v0.1.1** windows arm64 installer and checks its sha256 before launching it. click through the community notes setup. leave **set up and start the npu backend** checked.
+4. when qualcomm's geniex installer pops up, finish that too. yes, there are two installers. the first setup can take a while because it downloads a vision model. don't close the server window while it's working.
+5. check that the server is alive from msys2:
+
+   ```bash
+   curl -fsS \
+     http://127.0.0.1:18181/v1/models
+   ```
+
+   if you get json back, you're good. if you get `connection refused`, the backend isn't running. open **community notes npu server** from the start menu and read the error there instead of reinstalling everything.
+6. open a discourse thread and try it. the userscript falls back to gemini nano if the local server isn't available.
+
+the launcher adds itself to windows startup so it can run in the background after login. first-time setup still needs you to finish the installers. the server is local to `127.0.0.1:18181`.
+
+**heads up:** this is experimental and hasn't been confirmed on a real snapdragon x elite yet. the launcher and qualcomm installer are unsigned, so windows might complain. don't blindly bypass a security warning if the file or source doesn't match what you expected.
+
 <a id="behavior"></a>
 ## Behavior
 
