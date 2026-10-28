@@ -1,4 +1,6 @@
-## community notes npu launcher v0.1.2
+## community notes npu launcher v0.1.3
+
+fixes the windows named-event signal used to reopen an already-running tray gui.
 
 windows 11 arm64 / snapdragon — no terminal needed for day-to-day use.
 
