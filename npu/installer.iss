@@ -27,8 +27,8 @@ Source: "tray.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "run.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\\Community Notes NPU"; Filename: "{sys}\\wscript.exe"; Parameters: """{app}\\tray.vbs"""; WorkingDir: "{app}"
-Name: "{autoprograms}\\Community Notes NPU Setup and Repair"; Filename: "{sys}\\WindowsPowerShell\\v1.0\\powershell.exe"; Parameters: "-NoExit -NoProfile -ExecutionPolicy Bypass -File ""{app}\\run.ps1"""; WorkingDir: "{app}"
+Name: "{autoprograms}\Community Notes NPU"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tray.vbs"""; WorkingDir: "{app}"
+Name: "{autoprograms}\Community Notes NPU Setup and Repair"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoExit -NoProfile -ExecutionPolicy Bypass -File ""{app}\run.ps1"""; WorkingDir: "{app}"
 
 [Run]
-Filename: "{sys}\\wscript.exe"; Parameters: """{app}\\tray.vbs"""; Description: "Launch Community Notes NPU tray controls"; Flags: postinstall nowait skipifsilent
+Filename: "{sys}\wscript.exe"; Parameters: """{app}\tray.vbs"""; Description: "Launch Community Notes NPU tray controls"; Flags: postinstall nowait skipifsilent
