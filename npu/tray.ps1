@@ -11,14 +11,14 @@ $singleInstance = [System.Threading.Mutex]::new($true, 'Local\CommunityNotesNPUT
 if (-not $createdNew) {
     # Clicking the Start menu shortcut should show the already-running GUI.
     try {
-        $existing = [System.Threading.EventWaitHandle]::OpenExisting('Local\\CommunityNotesNPUShow')
+        $existing = [System.Threading.EventWaitHandle]::OpenExisting('Local\CommunityNotesNPUShow')
         [void]$existing.Set()
         $existing.Dispose()
     } catch { }
     exit 0
 }
 $script:showSignal = [System.Threading.EventWaitHandle]::new(
-    $false, [System.Threading.EventResetMode]::AutoReset, 'Local\\CommunityNotesNPUShow'
+    $false, [System.Threading.EventResetMode]::AutoReset, 'Local\CommunityNotesNPUShow'
 )
 
 $script:baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
