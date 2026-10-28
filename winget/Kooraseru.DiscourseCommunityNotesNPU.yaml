@@ -1,5 +1,5 @@
 PackageIdentifier: Kooraseru.DiscourseCommunityNotesNPU
-PackageVersion: 0.1.2
+PackageVersion: 0.1.3
 PackageLocale: en-US
 Publisher: Kooraseru
 PackageName: Community Notes NPU Launcher
@@ -9,7 +9,7 @@ PackageUrl: https://github.com/Kooraseru/discourse-community-notes
 InstallerType: inno
 Installers:
   - Architecture: arm64
-    InstallerUrl: https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v0.1.2/CommunityNotesNPU-Setup-0.1.2-arm64.exe
-    InstallerSha256: 1F97A18C0C8C52A969219F501AE3997076E9FF7E03BA3E0A42C8F671469F4CE3
+    InstallerUrl: https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v0.1.3/CommunityNotesNPU-Setup-0.1.3-arm64.exe
+    InstallerSha256: 1E683AC5EFF86AA77BF8C532A2DA7F399C240A8930ABAC6F657090EA0E893B01
 ManifestType: singleton
 ManifestVersion: 1.10.0
