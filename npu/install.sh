@@ -1,28 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# winGet local manifests require an elevated, one-time Windows setting.
-# use the same GitHub release installer directly instead.
-version='0.1.3'
-name="CommunityNotesNPU-Setup-${version}-arm64.exe"
-sha256='1e683ac5eff86aa77bf8c532a2da7f399c240a8930abac6f657090ea0e893b01'
-url="https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v${version}/${name}"
+# run this in msys2 clangarm64. curl only fetches the winget manifest
+# and helper; winget is responsible for the real installer + sha256.
+version='0.1.4'
+id='Kooraseru.DiscourseCommunityNotesNPU'
+installer_sha256='7d318861f7f4fbc26a811f13b56c7d73e4d67a16e04d6cab22e42bd55a1f507b'
+base='https://github.com/Kooraseru/discourse-community-notes'
+manifest_url="${base}/releases/download/npu-v${version}/${id}.yaml"
+helper_url='https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/gemini-nano/npu/winget-install.ps1'
 
-tmpdir="$(mktemp -d)"
-trap 'rm -rf "$tmpdir"' EXIT
-installer="$tmpdir/$name"
-
-echo 'downloading the npu installer...'
-curl --fail --location --show-error --retry 3 "$url" --output "$installer"
-
-echo 'checking sha256...'
-actual="$(sha256sum "$installer")"
-actual="${actual%% *}"
-if [[ "$actual" != "$sha256" ]]; then
-  printf 'sha256 mismatch (expected %s, got %s)\n' "$sha256" "$actual" >&2
+if ! command -v cygpath >/dev/null 2>&1; then
+  echo "this one's for msys2 on windows, not linux. open msys2 clangarm64." >&2
+  exit 1
+fi
+if ! command -v powershell.exe >/dev/null 2>&1; then
+  echo "can't find windows powershell. run this from msys2 clangarm64." >&2
   exit 1
 fi
 
-echo 'launching the installer...'
-"$installer"
-echo 'installer finished.'
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+manifest="$work/${id}.yaml"
+helper="$work/winget-install.ps1"
+
+echo 'grabbing the winget package info...'
+curl -fsSL --retry 3 "$manifest_url" -o "$manifest"
+curl -fsSL --retry 3 "$helper_url" -o "$helper"
+
+# Trust the pinned release, not a surprise package or a different installer.
+manifest_text="$(tr -d '\r' < "$manifest")"
+if ! grep -Fxq "PackageIdentifier: $id" <<< "$manifest_text" ||
+   ! grep -Fxq "PackageVersion: $version" <<< "$manifest_text" ||
+   ! grep -Fxq "    InstallerSha256: ${installer_sha256^^}" <<< "$manifest_text"; then
+  echo 'winget package info was not what we expected. not installing anything.' >&2
+  exit 1
+fi
+
+echo 'letting winget handle the install/upgrade...'
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass \
+  -File "$(cygpath -w "$helper")" \
+  -ManifestPath "$(cygpath -w "$manifest")" \
+  -Version "$version"
