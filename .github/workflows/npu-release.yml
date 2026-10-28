@@ -10,7 +10,7 @@ on:
       version:
         description: NPU launcher version (without the v prefix)
         required: true
-        default: '0.1.3'
+        default: '0.1.4'
 
 permissions:
   contents: write
@@ -19,13 +19,29 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      NPU_VERSION: ${{ github.event.inputs.version || '0.1.3' }}
+      NPU_VERSION: ${{ github.event.inputs.version || '0.1.4' }}
 
     steps:
       - name: Check out the test branch
         uses: actions/checkout@v4
         with:
           ref: gemini-nano
+
+      - name: Check powershell syntax before packaging
+        shell: pwsh
+        run: |
+          $scripts = @('npu/tray.ps1', 'npu/run.ps1', 'npu/winget-install.ps1')
+          foreach ($script in $scripts) {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $script).Path, [ref]$tokens, [ref]$parseErrors
+            ) | Out-Null
+            if ($parseErrors.Count) {
+              $parseErrors | ForEach-Object { Write-Error "$script $_" }
+              throw "powershell syntax errors in $script"
+            }
+          }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -64,10 +80,14 @@ jobs:
             'ShortDescription: Local Snapdragon NPU inference launcher for Discourse Community Notes'
             'PackageUrl: https://github.com/Kooraseru/discourse-community-notes'
             'InstallerType: inno'
+            'Scope: user'
             'Installers:'
             '  - Architecture: arm64'
             "    InstallerUrl: $downloadUrl"
             "    InstallerSha256: $sha256"
+            '    AppsAndFeaturesEntries:'
+            '      - DisplayName: Community Notes NPU Launcher'
+            "        DisplayVersion: $env:NPU_VERSION"
             'ManifestType: singleton'
             'ManifestVersion: 1.10.0'
           ) -join [Environment]::NewLine
@@ -78,12 +98,55 @@ jobs:
             (New-Object System.Text.UTF8Encoding($false))
           )
 
+          # Keep the microsoft/winget-pkgs three-file layout ready for
+          # submission. A release here alone does NOT publish to winget.
+          $upstreamDir = Join-Path 'winget-pkgs/manifests/k/Kooraseru/DiscourseCommunityNotesNPU' $env:NPU_VERSION
+          New-Item -ItemType Directory -Force -Path $upstreamDir | Out-Null
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+          $versionManifest = @(
+            'PackageIdentifier: Kooraseru.DiscourseCommunityNotesNPU'
+            "PackageVersion: $env:NPU_VERSION"
+            'DefaultLocale: en-US'
+            'ManifestType: version'
+            'ManifestVersion: 1.10.0'
+          ) -join [Environment]::NewLine
+          $installerManifest = @(
+            'PackageIdentifier: Kooraseru.DiscourseCommunityNotesNPU'
+            "PackageVersion: $env:NPU_VERSION"
+            'InstallerType: inno'
+            'Scope: user'
+            'Installers:'
+            '  - Architecture: arm64'
+            "    InstallerUrl: $downloadUrl"
+            "    InstallerSha256: $sha256"
+            '    AppsAndFeaturesEntries:'
+            '      - DisplayName: Community Notes NPU Launcher'
+            "        DisplayVersion: $env:NPU_VERSION"
+            'ManifestType: installer'
+            'ManifestVersion: 1.10.0'
+          ) -join [Environment]::NewLine
+          $localeManifest = @(
+            'PackageIdentifier: Kooraseru.DiscourseCommunityNotesNPU'
+            "PackageVersion: $env:NPU_VERSION"
+            'PackageLocale: en-US'
+            'Publisher: Kooraseru'
+            'PackageName: Community Notes NPU Launcher'
+            'License: ISC'
+            'ShortDescription: Native Windows ARM64 tray controls for the local Discourse Community Notes NPU backend'
+            'PackageUrl: https://github.com/Kooraseru/discourse-community-notes'
+            'ManifestType: defaultLocale'
+            'ManifestVersion: 1.10.0'
+          ) -join [Environment]::NewLine
+          [IO.File]::WriteAllText((Join-Path $upstreamDir 'Kooraseru.DiscourseCommunityNotesNPU.yaml'), $versionManifest + [Environment]::NewLine, $utf8)
+          [IO.File]::WriteAllText((Join-Path $upstreamDir 'Kooraseru.DiscourseCommunityNotesNPU.installer.yaml'), $installerManifest + [Environment]::NewLine, $utf8)
+          [IO.File]::WriteAllText((Join-Path $upstreamDir 'Kooraseru.DiscourseCommunityNotesNPU.locale.en-US.yaml'), $localeManifest + [Environment]::NewLine, $utf8)
+
       - name: Commit the generated WinGet manifest to gemini-nano
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add winget/Kooraseru.DiscourseCommunityNotesNPU.yaml
+          git add winget/Kooraseru.DiscourseCommunityNotesNPU.yaml winget-pkgs/
           git diff --cached --quiet
           if ($LASTEXITCODE -ne 0) {
             git commit -m "Package NPU launcher $env:NPU_VERSION for WinGet"
