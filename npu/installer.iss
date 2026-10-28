@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.1"
+  #define MyAppVersion "0.1.2"
 #endif
 
 [Setup]
@@ -22,11 +22,13 @@ WizardStyle=modern
 LicenseFile=..\LICENSE
 
 [Files]
+Source: "tray.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "tray.vbs"; DestDir: "{app}"; Flags: ignoreversion
 Source: "run.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{userstartup}\Community Notes NPU"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\run.ps1"" -Background"; WorkingDir: "{app}"
-Name: "{autoprograms}\Community Notes NPU Server"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoExit -NoProfile -ExecutionPolicy Bypass -File ""{app}\run.ps1"""; WorkingDir: "{app}"
+Name: "{autoprograms}\\Community Notes NPU"; Filename: "{sys}\\wscript.exe"; Parameters: """{app}\\tray.vbs"""; WorkingDir: "{app}"
+Name: "{autoprograms}\\Community Notes NPU Setup and Repair"; Filename: "{sys}\\WindowsPowerShell\\v1.0\\powershell.exe"; Parameters: "-NoExit -NoProfile -ExecutionPolicy Bypass -File ""{app}\\run.ps1"""; WorkingDir: "{app}"
 
 [Run]
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoExit -NoProfile -ExecutionPolicy Bypass -File ""{app}\run.ps1"""; Description: "set up and start the npu backend"; Flags: postinstall nowait
+Filename: "{sys}\\wscript.exe"; Parameters: """{app}\\tray.vbs"""; Description: "Launch Community Notes NPU tray controls"; Flags: postinstall nowait skipifsilent
