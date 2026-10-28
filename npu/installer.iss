@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.3"
+  #define MyAppVersion "0.1.4"
 #endif
 
 [Setup]
@@ -28,7 +28,9 @@ Source: "run.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\Community Notes NPU"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tray.vbs"" show"; WorkingDir: "{app}"
-Name: "{autoprograms}\Community Notes NPU Setup and Repair"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoExit -NoProfile -ExecutionPolicy Bypass -File ""{app}\run.ps1"""; WorkingDir: "{app}"
+
+[InstallDelete]
+Type: files; Name: "{autoprograms}\Community Notes NPU Setup and Repair.lnk"
 
 [Run]
 Filename: "{sys}\wscript.exe"; Parameters: """{app}\tray.vbs"" show"; Description: "Launch Community Notes NPU tray controls"; Flags: postinstall nowait skipifsilent
