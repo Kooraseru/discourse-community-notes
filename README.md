@@ -1,68 +1,65 @@
-<div align="center">
-  <h1>Discourse Community Notes</h1>
-</div>
+# discourse community notes
 
-Adds community-note style context to Discourse-based forums through a userscript, without modifying the forum backend.
+you know those little notes that show up under posts when somebody gets something wrong? yeah. that, but on discourse forums.
 
-<a id="overview"></a>
-## Overview
+it reads the replies and tries to add a short correction under the original post. sometimes there's nothing worth correcting, so it just doesn't show a note. that's better than making shit up.
 
-Discourse Community Notes surfaces contextual replies directly beneath the original post.
+this is a userscript, not a forum plugin. nothing gets posted to the actual website.
 
-When no custom note exists, the userscript uses the most-liked reply as contextual information. The note includes a short excerpt, links back to the source reply, and reuses the reply's existing Discourse like state rather than maintaining a separate voting system.
+## get it
 
-The interface is built from native Discourse controls and theme variables so it remains compatible with light mode, dark mode, and custom forum themes.
+install [tampermonkey](https://www.tampermonkey.net/), then [install the userscript](https://github.com/Kooraseru/discourse-community-notes/raw/refs/heads/gemini-nano/discourse-community-notes.user.js).
 
-<a id="installation"></a>
-## Installation
+open a discourse thread. that's literally it. chrome's built-in ai can handle notes on its own if it's available, so you don't need the npu stuff below unless you want it.
 
-Requires a userscript manager such as [Tampermonkey](https://www.tampermonkey.net/).
+## got a snapdragon laptop?
 
-[Install Discourse Community Notes](https://github.com/Kooraseru/discourse-community-notes/raw/refs/heads/main/discourse-community-notes.user.js)
+if you're on windows 11 arm64, you can run the model on your own npu. no cloud, no leaving a powershell window open like a caveman.
 
-Updates are distributed through the same userscript URL.
+open **msys2 clangarm64** once and paste this:
 
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/gemini-nano/npu/install.sh \
+  | bash
+```
 
-## windows on arm / snapdragon npu setup
+that's the install *and* update command. rerun it whenever you want the latest launcher. no git clone, no downloading an exe by hand.
 
-windows 11 arm64 + snapdragon x elite. the npu backend runs locally and the windows tray app controls it — no terminal required for regular use.
+**yes, it uses winget.** curl just grabs the little setup files. winget handles downloading the actual app and checking its hash. you might get a windows admin popup the first time. approve it if you trust this repo.
 
-1. install [tampermonkey](https://www.tampermonkey.net/) and the [`gemini-nano` userscript](https://github.com/Kooraseru/discourse-community-notes/raw/refs/heads/gemini-nano/discourse-community-notes.user.js).
-2. download and run [Community Notes NPU Launcher v0.1.3 for Windows ARM64](https://github.com/Kooraseru/discourse-community-notes/releases/download/npu-v0.1.3/CommunityNotesNPU-Setup-0.1.3-arm64.exe). it upgrades the old launcher in place.
-3. the installer opens a real windows control window. you'll also find **Community Notes NPU** in the start menu and notification area (click the **^** near the clock if the tray icon is hidden).
-4. click **start**, **stop**, or **restart** there. turn **start with windows** on or off. closing the control window leaves the tray app running; use **quit tray and stop server** to exit completely.
-5. if the model isn't installed, right-click the tray icon and choose **prepare vision model**. if genieX itself isn't installed, use the included **Community Notes NPU Setup and Repair** shortcut once to install it.
+one annoying catch: **the app isn't in microsoft's public winget list yet.** so plain `winget install --id Kooraseru.DiscourseCommunityNotesNPU` won't work until that gets accepted. the command above uses the release's winget file instead. still winget; no manually running an installer. if the admin popup is blocked by your pc's policies, local winget installs won't work either.
 
-the backend only listens on `127.0.0.1:18181`. the tray automatically restarts a crashed geniex process a few times, but stops retrying after repeated crashes. if another geniex instance is already running, the tray shows it as external instead of killing it.
+## and now?
 
-**note:** qualcomm geniex and the launcher are experimental. the launcher installer is unsigned, so check the source before accepting windows smartscreen prompts.
+open **community notes npu** from the windows start menu. there's an actual windows window with buttons now. shocking, i know.
 
-<a id="behavior"></a>
-## Behavior
+- **start / stop / restart** — does exactly what it says.
+- **start with windows** — turn it on or off. no startup-folder archaeology.
+- **install geniex** — only if qualcomm's thing isn't on your pc yet. click through their installer when it opens.
+- **prepare vision model** — grabs the model the first time. it's a few gigs, not every time.
+- **view log** — if something goes wrong, that's where the useful stuff is.
 
-The current implementation:
+close the window and the little tray icon stays running. check under the **^** by your clock. right-click it for the same controls. **quit tray and stop server** actually quits it.
 
-- Detects Discourse topic pages automatically.
-- Adds a Community Note beneath the original post.
-- Uses the most-liked loaded reply as context.
-- Generates a short one-to-three sentence preview.
-- Ignores quoted material when generating the preview.
-- Allows the full reply to be expanded when additional context exists.
-- Links attribution back to the original reply.
-- Mirrors the reply's native like count and state.
-- Likes or unlikes the original reply when interacting with the Community Note heart.
-- Uses Discourse's native icons, controls, and theme variables.
+if geniex randomly crashes (yeah, that happened), the tray tries restarting it a few times. if it keeps crashing, it stops trying instead of looping forever.
 
-The userscript does not currently create or store independent Community Notes on the forum server.
+already had geniex open in a terminal? close that old window first. the tray won't kill a separate server it didn't start.
 
-<a id="compatibility"></a>
-## Compatibility
+## something's fucked?
 
-The userscript is intended for Discourse-based forums.
+if the note says **local npu**, it's using your snapdragon. if it says **local ai**, it's using chrome instead. if there's no note, it might have decided there wasn't enough evidence, or something might've failed.
 
-Compatibility depends on the forum exposing the standard Discourse topic structure and client-side modules used by the script. Heavily customized Discourse installations may require additional handling.
+the model can still get facts wrong. don't take an ai-generated note as proof of anything. it should be supported by replies, not invented out of thin air.
 
-<a id="license"></a>
-## License
+if the tray won't start, open it from the start menu and check **view log**. if the model isn't there, hit **prepare vision model**. if geniex is missing, hit **install geniex**. no terminal needed.
 
-Discourse Community Notes is distributed under the ISC License. [LICENSE](LICENSE).
+to remove the launcher, go to **windows settings → apps → installed apps** and uninstall **community notes npu launcher**. the userscript is separate; remove that in tampermonkey if you want.
+
+## other stuff
+
+works on discourse forums with the usual page layout. some forums are customized enough to break things.
+
+notes are local to your browser. this doesn't add a voting system, change anybody else's posts, or upload your forum data to some notes server.
+
+the code is [here](https://github.com/Kooraseru/discourse-community-notes/tree/gemini-nano), and it's under the [isc license](LICENSE).
