@@ -23,12 +23,12 @@
     const LOCAL_AI_RESPONSE_SCHEMA = {
         type: "object",
         properties: {
-            summary: {
+            note: {
                 type: "string",
                 maxLength: 500,
             },
         },
-        required: ["summary"],
+        required: ["note"],
         additionalProperties: false,
     };
 
@@ -1708,7 +1708,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
 
         const payload = {
             task:
-                "Summarize the discussion and the major viewpoints toward the original post.",
+                "Write one short Community Note correcting or contextualizing the original post using evidence from replies. Do not summarize the thread. Return NO_NOTE if nothing warrants annotation.",
             topic: {
                 id: topic.id,
                 title:
@@ -2188,12 +2188,18 @@ ${JSON.stringify(payload, null, 2)}`;
                     );
                 const summary =
                     normalizeText(
-                        result.summary || ""
+                        result.note || ""
                     );
 
-            if (summary === "NO_NOTE") {
-                return null;
-            }
+                if (summary === "NO_NOTE") {
+                    return null;
+                }
+
+                // Reject discussion recaps masquerading as notes.
+                if (/^(?:the )?(?:user|author|poster) (?:asks|asked|wants|seeks|suggests|proposes)\b|^(?:replies|responses|commenters|users) (?:suggest|mention|say|discuss|recommend)\b|^(?:the )?discussion\b/i.test(summary)) {
+                    localAILog("note: rejected recap", { summary });
+                    return null;
+                }
 
                 if (!summary) {
                     throw new Error(
