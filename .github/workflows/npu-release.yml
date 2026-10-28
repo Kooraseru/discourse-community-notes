@@ -10,7 +10,7 @@ on:
       version:
         description: NPU launcher version (without the v prefix)
         required: true
-        default: '0.1.0'
+        default: '0.1.1'
 
 permissions:
   contents: write
@@ -19,7 +19,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      NPU_VERSION: ${{ github.event.inputs.version || '0.1.0' }}
+      NPU_VERSION: ${{ github.event.inputs.version || '0.1.1' }}
 
     steps:
       - name: Check out the test branch
