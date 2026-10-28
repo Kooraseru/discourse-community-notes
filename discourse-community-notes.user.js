@@ -2,7 +2,7 @@
 // @name         Discourse Community Notes [Local AI Test]
 // @namespace    kooraseru
 // @author       kooraseru (https://github.com/Kooraseru)
-// @version      1.2.0-local-ai.14
+// @version      1.2.0-local-ai.15
 // @description  Community Notes for Discourse-based forums with local Chrome AI discussion overviews
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
@@ -24,7 +24,7 @@
     const LOCAL_AI_IMAGE_LIMIT = 4;
     const LOCAL_AI_IMAGE_MAX_EDGE = 900;
     const GENIEX_URL = 'http://127.0.0.1:18181/v1';
-    const GENIEX_MODEL = 'ai-hub-models/Qwen2.5-VL-7B-Instruct';
+    const GENIEX_MODEL = 'qualcomm/Qwen2.5-VL-7B-Instruct:W4A16';
 
     const LOCAL_AI_FINDING_SCHEMA = {
         type: "object",
