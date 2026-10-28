@@ -8,7 +8,7 @@ id='Kooraseru.DiscourseCommunityNotesNPU'
 installer_sha256='7d318861f7f4fbc26a811f13b56c7d73e4d67a16e04d6cab22e42bd55a1f507b'
 base='https://github.com/Kooraseru/discourse-community-notes'
 manifest_url="${base}/releases/download/npu-v${version}/${id}.yaml"
-helper_url='https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/c6b54029c73564a1fa18b92eacc26c9fa20178b6/npu/winget-install.ps1'
+helper_url='https://raw.githubusercontent.com/Kooraseru/discourse-community-notes/24868093eb69c1e1ed51e13ca08e70a98249ebd1/npu/winget-install.ps1'
 
 if ! command -v cygpath >/dev/null 2>&1; then
   echo "this one's for msys2 on windows, not linux. open msys2 clangarm64." >&2
