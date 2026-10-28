@@ -7,6 +7,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $packageId = 'Kooraseru.DiscourseCommunityNotesNPU'
+# MSYS2 and newly installed apps can leave the current process with a stale PATH.
+$env:Path = (@(
+    [Environment]::GetEnvironmentVariable('Path', 'Machine'),
+    [Environment]::GetEnvironmentVariable('Path', 'User'),
+    $env:Path
+) | Where-Object { $_ }) -join ';'
 $command = Get-Command 'winget.exe' -CommandType Application -ErrorAction SilentlyContinue
 if (-not $command) {
     Write-Error 'winget is missing. install/update App Installer from the microsoft store first.'
