@@ -1,0 +1,10 @@
+PackageIdentifier: Kooraseru.DiscourseCommunityNotesNPU
+PackageVersion: 0.1.4
+PackageLocale: en-US
+Publisher: Kooraseru
+PackageName: Community Notes NPU Launcher
+License: ISC
+ShortDescription: Native Windows ARM64 tray controls for the local Discourse Community Notes NPU backend
+PackageUrl: https://github.com/Kooraseru/discourse-community-notes
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0
