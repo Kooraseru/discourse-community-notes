@@ -5,7 +5,7 @@ $background = $args -contains '-Background'
 if ($background -and -not (Get-Command geniex.exe -ErrorAction SilentlyContinue)) { exit 0 }
 
 # Keep this in sync with GENIEX_MODEL in discourse-community-notes.user.js.
-$model = 'ai-hub-models/Qwen2.5-VL-7B-Instruct'
+$model = 'ai-hub-models/Qwen2.5-VL-7B-Instruct:W4A16'
 $geniexVersion = 'v0.10.0'
 $installerName = "geniex-cli-setup-windows-arm64-$geniexVersion.exe"
 $installerUrl = "https://github.com/qualcomm/GenieX/releases/download/$geniexVersion/$installerName"
