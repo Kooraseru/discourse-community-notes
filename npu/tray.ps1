@@ -1,4 +1,5 @@
 #requires -Version 5.1
+param([switch]$Show)
 # Real Windows Forms tray controller. No visible terminal is required.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
@@ -397,6 +398,10 @@ try {
     Write-Log 'Tray controller started.'
     Start-Server
     $script:timer.Start()
+    if ($Show) {
+        $script:window.Show()
+        $script:window.Activate()
+    }
     [System.Windows.Forms.Application]::Run($script:context)
 } finally {
     $script:timer.Stop()
