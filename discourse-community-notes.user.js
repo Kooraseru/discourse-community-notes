@@ -2663,7 +2663,7 @@ Do not say there is no evidence or proof merely because an image could not be ex
             quotedReplies.some(text => normalizeText(text).includes(evidence));
         if (!note || /^NO_NOTE$/i.test(note) || note.length > 300 ||
             !evidenceFound ||
-            /^(?:the )?(?:user|author|poster) (?:asks|asked|wants|seeks|suggests|proposes)\b|^(?:replies|responses|commenters|users) (?:suggest|mention|say|discuss|recommend)\b|^(?:the )?discussion\\b/i.test(note)) {
+            /^(?:the )?(?:user|author|poster) (?:asks|asked|wants|seeks|suggests|proposes)\b|^(?:replies|responses|commenters|users) (?:suggest|mention|say|discuss|recommend)\b|^(?:the )?discussion\b/i.test(note)) {
             localAILog("GenieX note rejected: no verified supporting reply", {
                 note, evidenceFound,
             });
