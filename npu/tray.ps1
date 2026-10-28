@@ -7,7 +7,18 @@ Add-Type -AssemblyName System.Drawing
 
 $createdNew = $false
 $singleInstance = [System.Threading.Mutex]::new($true, 'Local\CommunityNotesNPUTray', [ref]$createdNew)
-if (-not $createdNew) { exit 0 }
+if (-not $createdNew) {
+    # Clicking the Start menu shortcut should show the already-running GUI.
+    try {
+        $existing = [System.Threading.EventWaitHandle]::OpenExisting('Local\\CommunityNotesNPUShow')
+        [void]$existing.Set()
+        $existing.Dispose()
+    } catch { }
+    exit 0
+}
+$script:showSignal = [System.Threading.EventWaitHandle]::new(
+    $false, [System.Threading.EventResetMode]::AutoReset, 'Local\\CommunityNotesNPUShow'
+)
 
 $script:baseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:dataDir = Join-Path $env:LOCALAPPDATA 'CommunityNotesNPU'
@@ -333,6 +344,10 @@ $script:timer = [System.Windows.Forms.Timer]::new()
 $script:timer.Interval = 2500
 $script:timer.Add_Tick({
     try {
+        if ($script:showSignal.WaitOne(0)) {
+            $script:window.Show()
+            $script:window.Activate()
+        }
         if ($script:backend -and $script:backend.HasExited) {
             $exitCode = $script:backend.ExitCode
             Write-Log "GenieX exited with code $exitCode."
@@ -401,5 +416,6 @@ try {
     }
     Write-Log 'Tray controller exited.'
     if ($createdNew) { $singleInstance.ReleaseMutex() }
+    $script:showSignal.Dispose()
     $singleInstance.Dispose()
 }
