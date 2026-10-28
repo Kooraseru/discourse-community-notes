@@ -30,6 +30,7 @@ $script:modelId = 'qualcomm/Qwen2.5-VL-7B-Instruct:W4A16'
 $script:serverUrl = 'http://127.0.0.1:18181/v1/models'
 $script:backend = $null
 $script:pullProcess = $null
+$script:installProcess = $null
 $script:wantsServer = $true
 $script:retryAt = [datetime]::MinValue
 $script:crashes = [System.Collections.Generic.List[datetime]]::new()
@@ -160,6 +161,36 @@ function Set-StartupEnabled([bool]$enabled) {
     Update-UI
 }
 
+function Install-GenieX {
+    if ($script:installProcess -and -not $script:installProcess.HasExited) { return }
+    if (Resolve-GenieX) {
+        [System.Windows.Forms.MessageBox]::Show(
+            'GenieX is already installed. Use Prepare vision model if you still need the model.',
+            'Community Notes NPU', 'OK', 'Information'
+        ) | Out-Null
+        return
+    }
+    try {
+        $ps = Join-Path $PSHOME 'powershell.exe'
+        $setupScript = Join-Path $script:baseDir 'run.ps1'
+        $start = [System.Diagnostics.ProcessStartInfo]::new()
+        $start.FileName = $ps
+        $start.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $setupScript + '" -InstallOnly'
+        $start.UseShellExecute = $false
+        $start.CreateNoWindow = $true
+        $start.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $script:installProcess = [System.Diagnostics.Process]::Start($start)
+        Write-Log 'Started GenieX setup in background. Follow the Qualcomm installer window.'
+    } catch {
+        Write-Log "Could not start GenieX setup: $_"
+        [System.Windows.Forms.MessageBox]::Show(
+            "Could not start GenieX setup: $_",
+            'Community Notes NPU', 'OK', 'Error'
+        ) | Out-Null
+    }
+    Update-UI
+}
+
 function Start-ModelDownload {
     if ($script:pullProcess -and -not $script:pullProcess.HasExited) { return }
     $exe = Resolve-GenieX
@@ -208,6 +239,7 @@ $script:openItem = [System.Windows.Forms.ToolStripMenuItem]::new('Open controls.
 $script:startItem = [System.Windows.Forms.ToolStripMenuItem]::new('Start server')
 $script:stopItem = [System.Windows.Forms.ToolStripMenuItem]::new('Stop server')
 $script:restartItem = [System.Windows.Forms.ToolStripMenuItem]::new('Restart server')
+$script:installItem = [System.Windows.Forms.ToolStripMenuItem]::new('Install GenieX')
 $script:downloadItem = [System.Windows.Forms.ToolStripMenuItem]::new('Prepare vision model')
 $script:startupItem = [System.Windows.Forms.ToolStripMenuItem]::new('Start with Windows')
 $script:logItem = [System.Windows.Forms.ToolStripMenuItem]::new('View log')
@@ -217,7 +249,7 @@ foreach ($entry in @($script:statusItem, $script:openItem, $script:startItem,
     [void]$script:menu.Items.Add($entry)
 }
 [void]$script:menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
-foreach ($entry in @($script:downloadItem, $script:startupItem, $script:logItem)) {
+foreach ($entry in @($script:installItem, $script:downloadItem, $script:startupItem, $script:logItem)) {
     [void]$script:menu.Items.Add($entry)
 }
 [void]$script:menu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
@@ -227,7 +259,7 @@ $script:tray.ContextMenuStrip = $script:menu
 $script:window = [System.Windows.Forms.Form]::new()
 $script:window.Text = 'Community Notes NPU'
 $script:window.StartPosition = 'CenterScreen'
-$script:window.ClientSize = [System.Drawing.Size]::new(450, 260)
+$script:window.ClientSize = [System.Drawing.Size]::new(450, 310)
 $script:window.FormBorderStyle = 'FixedDialog'
 $script:window.MaximizeBox = $false
 $script:window.MinimizeBox = $false
@@ -269,8 +301,17 @@ $script:window.Controls.Add($script:buttonLog)
 $script:tip = [System.Windows.Forms.Label]::new()
 $script:tip.Text = 'Closing this window keeps the server in the tray.'
 $script:tip.ForeColor = [System.Drawing.Color]::DimGray
-$script:tip.SetBounds(20, 222, 410, 23)
+$script:tip.SetBounds(20, 275, 410, 23)
 $script:window.Controls.Add($script:tip)
+
+$script:buttonInstall = [System.Windows.Forms.Button]::new()
+$script:buttonInstall.Text = 'Install GenieX'
+$script:buttonInstall.SetBounds(20, 223, 180, 36)
+$script:window.Controls.Add($script:buttonInstall)
+$script:buttonModel = [System.Windows.Forms.Button]::new()
+$script:buttonModel.Text = 'Prepare vision model'
+$script:buttonModel.SetBounds(220, 223, 192, 36)
+$script:window.Controls.Add($script:buttonModel)
 
 function Update-UI {
     $state = Get-ServerState
@@ -306,6 +347,12 @@ function Update-UI {
     $script:buttonStart.Enabled = $script:startItem.Enabled
     $script:buttonStop.Enabled = $script:stopItem.Enabled
     $script:buttonRestart.Enabled = $script:restartItem.Enabled
+    $isInstalling = $script:installProcess -and -not $script:installProcess.HasExited
+    $isPreparing = $script:pullProcess -and -not $script:pullProcess.HasExited
+    $script:installItem.Enabled = -not $isInstalling
+    $script:buttonInstall.Enabled = -not $isInstalling
+    $script:downloadItem.Enabled = -not $isPreparing
+    $script:buttonModel.Enabled = -not $isPreparing
     $script:startupItem.Checked = Get-StartupEnabled
     $script:startupCheck.Checked = $script:startupItem.Checked
     $extra = if ($script:lastError) { $script:lastError }
@@ -320,6 +367,7 @@ $script:tray.Add_DoubleClick({ $script:window.Show(); $script:window.Activate() 
 $script:startItem.Add_Click({ Start-Server })
 $script:stopItem.Add_Click({ Stop-Server })
 $script:restartItem.Add_Click({ Restart-Server })
+$script:installItem.Add_Click({ Install-GenieX })
 $script:downloadItem.Add_Click({ Start-ModelDownload })
 $script:startupItem.Add_Click({ Set-StartupEnabled (-not (Get-StartupEnabled)) })
 $script:logItem.Add_Click({ Open-Log })
@@ -327,6 +375,8 @@ $script:buttonStart.Add_Click({ Start-Server })
 $script:buttonStop.Add_Click({ Stop-Server })
 $script:buttonRestart.Add_Click({ Restart-Server })
 $script:buttonLog.Add_Click({ Open-Log })
+$script:buttonInstall.Add_Click({ Install-GenieX })
+$script:buttonModel.Add_Click({ Start-ModelDownload })
 $script:startupCheck.Add_Click({ Set-StartupEnabled $script:startupCheck.Checked })
 $script:window.Add_FormClosing({
     param($sender, $eventArgs)
@@ -371,6 +421,18 @@ $script:timer.Add_Tick({
                 } else {
                     $script:retryAt = $now.AddSeconds(5 * $script:crashes.Count)
                 }
+            }
+        }
+        if ($script:installProcess -and $script:installProcess.HasExited) {
+            $exitCode = $script:installProcess.ExitCode
+            Write-Log "GenieX setup finished with code $exitCode."
+            $script:installProcess.Dispose()
+            $script:installProcess = $null
+            if ($exitCode -eq 0) {
+                $script:lastError = ''
+                $script:wantsServer = $true
+            } else {
+                $script:lastError = 'GenieX setup did not finish. View log, then try Install GenieX again.'
             }
         }
         if ($script:pullProcess -and $script:pullProcess.HasExited) {
@@ -418,6 +480,9 @@ try {
     }
     if ($script:pullProcess) {
         try { $script:pullProcess.Dispose() } catch { }
+    }
+    if ($script:installProcess) {
+        try { $script:installProcess.Dispose() } catch { }
     }
     Write-Log 'Tray controller exited.'
     if ($createdNew) { $singleInstance.ReleaseMutex() }
