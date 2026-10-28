@@ -5,7 +5,9 @@
 // @version      1.2.0-local-ai.14
 // @description  Community Notes for Discourse-based forums with local Chrome AI discussion overviews
 // @match        *://*/*
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @connect      127.0.0.1
 // @sandbox      raw
 // ==/UserScript==
 
@@ -21,6 +23,8 @@
     const LOCAL_AI_REPLY_CHAR_LIMIT = 350;
     const LOCAL_AI_IMAGE_LIMIT = 4;
     const LOCAL_AI_IMAGE_MAX_EDGE = 900;
+    const GENIEX_URL = 'http://127.0.0.1:18181/v1';
+    const GENIEX_MODEL = 'ai-hub-models/Qwen2.5-VL-7B-Instruct';
 
     const LOCAL_AI_FINDING_SCHEMA = {
         type: "object",
@@ -325,7 +329,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
                 href: location.href,
                 settings,
                 languageModelExposed:
-                    typeof window.LanguageModel !== "undefined",
+                    typeof (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel !== "undefined",
                 iterations: [],
             };
 
@@ -361,7 +365,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
                     await runDiagnosticOperation(
                         iteration,
                         "availability",
-                        () => window.LanguageModel.availability({
+                        () => (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel.availability({
                             expectedInputs: [
                                 {
                                     type: "text",
@@ -393,7 +397,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
                         "create bare session",
                         async () => {
                             bareSession =
-                                await window.LanguageModel.create({
+                                await (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel.create({
                                     expectedInputs: [
                                         {
                                             type: "text",
@@ -513,7 +517,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
                                     "create production-shaped session",
                                     async () => {
                                         realSession =
-                                            await window.LanguageModel.create({
+                                            await (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel.create({
                                                 expectedInputs: [
                                                     {
                                                         type: "text",
@@ -655,7 +659,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
         const report = {
             startedAt: new Date().toISOString(),
             userAgent: navigator.userAgent,
-            languageModelExposed: typeof window.LanguageModel !== "undefined",
+            languageModelExposed: typeof (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel !== "undefined",
             tests: [],
         };
 
@@ -699,7 +703,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
 
         const availability = await runTest(
             "availability",
-            () => window.LanguageModel.availability({
+            () => (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel.availability({
                 expectedInputs: [{ type: "text", languages: ["en"] }],
                 expectedOutputs: [{ type: "text", languages: ["en"] }],
             }),
@@ -711,7 +715,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
         await runTest(
             "create bare session",
             async () => {
-                session = await window.LanguageModel.create({
+                session = await (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel.create({
                     expectedInputs: [{ type: "text", languages: ["en"] }],
                     expectedOutputs: [{ type: "text", languages: ["en"] }],
                 });
@@ -772,7 +776,7 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
             return localAISession;
         },
         get api() {
-            return window.LanguageModel;
+            return (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel;
         },
         debug() {
             return runLocalAIDiagnostics();
@@ -810,11 +814,11 @@ Return ONLY the note text or exactly "NO_NOTE". No preamble. No explanation. No 
         "bootstrap",
         {
             languageModelExposed:
-                typeof window.LanguageModel !==
+                typeof (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel !==
                 "undefined",
             languageModelKeys:
-                typeof window.LanguageModel !== "undefined"
-                    ? Object.getOwnPropertyNames(window.LanguageModel)
+                typeof (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel !== "undefined"
+                    ? Object.getOwnPropertyNames((typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel)
                     : [],
             userAgent:
                 navigator.userAgent,
@@ -1855,7 +1859,7 @@ ${JSON.stringify(payload, null, 2)}`;
             const rawAvailability =
                 await withLocalAITimeout(
                     "LanguageModel.availability()",
-                    () => window.LanguageModel.availability({
+                    () => (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel.availability({
                         expectedInputs: [
                             {
                                 type: "text",
@@ -1978,7 +1982,7 @@ ${JSON.stringify(payload, null, 2)}`;
         localAISessionPromise =
             withLocalAITimeout(
                 "LanguageModel.create()",
-                () => window.LanguageModel
+                () => (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel
                 .create({
                     expectedInputs: [
                         {
@@ -2228,7 +2232,7 @@ ${JSON.stringify(payload, null, 2)}`;
     async function evaluateLocalAIFinding(evaluator, topic, posts, replies, imageData) {
         let session = null;
         try {
-            const createEvaluator = includeImages => window.LanguageModel.create({
+            const createEvaluator = includeImages => (typeof unsafeWindow !== "undefined" ? unsafeWindow : window).LanguageModel.create({
                 expectedInputs: [
                     { type: "text", languages: ["en"] },
                     ...(includeImages ? [{ type: "image" }] : []),
@@ -2509,6 +2513,105 @@ Do not say there is no evidence or proof merely because an image could not be ex
         }
     }
 
+
+    function genieXRequest(path, method = "GET", body = null, timeout = 90000) {
+        if (typeof GM_xmlhttpRequest !== "function")
+            return Promise.reject(new Error("GM_xmlhttpRequest unavailable"));
+        return new Promise((resolve, reject) => GM_xmlhttpRequest({
+            url: GENIEX_URL + path,
+            method,
+            headers: body ? { "Content-Type": "application/json" } : {},
+            data: body ? JSON.stringify(body) : undefined,
+            timeout,
+            responseType: "json",
+            onload(response) {
+                if (response.status < 200 || response.status >= 300)
+                    return reject(new Error("GenieX HTTP " + response.status));
+                try {
+                    resolve(typeof response.response === "string"
+                        ? JSON.parse(response.response) : response.response);
+                } catch (error) { reject(error); }
+            },
+            onerror: () => reject(new Error("GenieX unavailable")),
+            ontimeout: () => reject(new Error("GenieX timed out")),
+        }));
+    }
+
+    async function detectGenieXModel() {
+        try {
+            const result = await genieXRequest("/models", "GET", null, 1800);
+            const ids = (result?.data || []).map(model => model.id);
+            return ids.includes(GENIEX_MODEL) ? GENIEX_MODEL : null;
+        } catch { return null; }
+    }
+
+    function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function generateWithGenieX(topic, posts, model) {
+        const replies = getEligibleAIReplies(posts);
+        if (!replies.length) return null;
+        const cacheKey = "geniex|" + model + "|" +
+            getLocalAICacheKey(topic, posts, replies);
+        if (localAISelectionCache.has(cacheKey))
+            return localAISelectionCache.get(cacheKey);
+
+        setLocalAIProgress(
+            "Reading posts " + (replies.length + 1) + "/" + posts.length,
+            "Snapdragon NPU backend"
+        );
+        const imageData = await collectLocalAIImages(posts, replies);
+        setLocalAIProgress("Writing Community Note on NPU",
+            imageData.images.length + "/" + imageData.requestedCount + " images loaded");
+
+        const content = [{
+            type: "text",
+            text: buildLocalAIPrompt(topic, posts, replies,
+                "Write ONE specific, supported correction or missing context. " +
+                "If none is supported, output NO_NOTE. Do not summarize, list suggestions, " +
+                "or confuse unreadable images with missing evidence."),
+        }];
+        for (const image of imageData.images) {
+            content.push({ type: "text",
+                text: "Evidence image attached to post #" + image.postNumber });
+            content.push({ type: "image_url",
+                image_url: { url: await blobToDataUrl(image.blob) } });
+        }
+
+        const response = await genieXRequest("/chat/completions", "POST", {
+            model,
+            messages: [
+                { role: "system", content: LOCAL_AI_SYSTEM_PROMPT },
+                { role: "user", content },
+            ],
+            max_tokens: 160,
+            temperature: 0.15,
+            stream: false,
+            enable_think: false,
+        }, 120000);
+
+        const note = normalizeText(response?.choices?.[0]?.message?.content || "");
+        if (!note || note === "NO_NOTE" ||
+            /^(?:the )?(?:user|author|poster) (?:asks|asked|wants|seeks|suggests|proposes)\b|^(?:replies|responses|commenters|users) (?:suggest|mention|say|discuss|recommend)\b|^(?:the )?discussion\b/i.test(note)) {
+            localAISelectionCache.set(cacheKey, null);
+            return null;
+        }
+        const selection = {
+            mode: "npu",
+            summary: note,
+            replyCount: Math.max(0, posts.length - 1),
+            sampledReplyCount: replies.length,
+        };
+        localAISelectionCache.set(cacheKey, selection);
+        return selection;
+    }
+
     async function getBestReplySelection(
         topic,
         posts
@@ -2517,15 +2620,22 @@ Do not say there is no evidence or proof merely because an image could not be ex
             return null;
         }
 
-        return summarizeDiscussionWithLocalAI(
-            topic,
-            posts
-        );
+        const npuModel = await detectGenieXModel();
+        if (npuModel) {
+            try { return await generateWithGenieX(topic, posts, npuModel); }
+            catch (error) {
+                localAILog("GenieX failed; using Gemini Nano", {
+                    message: error?.message || String(error)
+                });
+            }
+        }
+        return summarizeDiscussionWithLocalAI(topic, posts);
     }
 
     function getLocalAIStatusText(
         selection = null
     ) {
+        if (selection?.mode === "npu") return "local NPU";
         if (
             selection?.mode ===
             "ai"
@@ -2634,10 +2744,9 @@ Do not say there is no evidence or proof merely because an image could not be ex
         slot.replaceChildren();
 
         const needsActivation =
-            selection?.mode !==
-                "ai" &&
-            localAIStatus ===
-                "needs-activation";
+            selection?.mode !== "ai" &&
+            selection?.mode !== "npu" &&
+            localAIStatus === "needs-activation";
 
         const control =
             document.createElement(
@@ -2649,18 +2758,14 @@ Do not say there is no evidence or proof merely because an image could not be ex
         control.className =
             "df-community-note-ai-status";
         control.dataset.state =
-            selection?.mode ===
-            "ai"
+            (selection?.mode === "ai" || selection?.mode === "npu")
                 ? "ai"
                 : localAIStatus ===
                     "error"
                     ? "error"
                     : "status";
         control.dataset.locked =
-            String(
-                selection?.mode ===
-                "ai"
-            );
+            String(selection?.mode === "ai" || selection?.mode === "npu");
         control.textContent =
             getLocalAIStatusText(
                 selection
