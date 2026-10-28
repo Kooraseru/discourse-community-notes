@@ -2,7 +2,7 @@
 // @name         Discourse Community Notes
 // @namespace    kooraseru
 // @author       kooraseru (https://github.com/Kooraseru)
-// @version      1.2.0-local-ai.16
+// @version      1.2.0-local-ai.17
 // @description  Community Notes for Discourse-based forums with local Chrome AI discussion overviews
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
@@ -2535,8 +2535,18 @@ Do not say there is no evidence or proof merely because an image could not be ex
             timeout,
             responseType: "json",
             onload(response) {
-                if (response.status < 200 || response.status >= 300)
-                    return reject(new Error("GenieX HTTP " + response.status));
+                if (response.status < 200 || response.status >= 300) {
+                    const detail = response.response?.detail
+                        || response.response?.error?.message
+                        || response.responseText
+                        || response.response;
+                    const message = typeof detail === "string"
+                        ? detail : JSON.stringify(detail);
+                    return reject(new Error(
+                        "GenieX HTTP " + response.status +
+                        (message ? ": " + message.slice(0, 800) : "")
+                    ));
+                }
                 try {
                     resolve(typeof response.response === "string"
                         ? JSON.parse(response.response) : response.response);
