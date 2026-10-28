@@ -23,6 +23,8 @@ LicenseFile=..\LICENSE
 
 [Files]
 Source: "run.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "background.vbs"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
+Name: "{userstartup}\Community Notes NPU"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\background.vbs"""; WorkingDir: "{app}"
 Name: "{autoprograms}\Community Notes NPU Server"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoExit -NoProfile -ExecutionPolicy Bypass -File ""{app}\run.ps1"""; WorkingDir: "{app}"
