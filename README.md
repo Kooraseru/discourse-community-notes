@@ -42,6 +42,8 @@ open **community notes npu** from the windows start menu. there's an actual wind
 
 close the window and the little tray icon stays running. check under the **^** by your clock. right-click it for the same controls. **quit tray and stop server** actually quits it.
 
+if you updated from an older version while the tray was already running, quit that old tray once and open **community notes npu** again from the start menu. then you're on the new one.
+
 if geniex randomly crashes (yeah, that happened), the tray tries restarting it a few times. if it keeps crashing, it stops trying instead of looping forever.
 
 already had geniex open in a terminal? close that old window first. the tray won't kill a separate server it didn't start.
